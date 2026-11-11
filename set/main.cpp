@@ -114,8 +114,8 @@ string setToString(const Set* set, const string& name) {
 
 	output << "E " << name;
 
-	for (size_t i = 0; i < set->capacity; ++i) {
-		Node* current = set->buckets[i];
+	for (size_t i = 0; i < set->table.capacity; ++i) {
+		Node* current = set->table.buckets[i];
 
 		while (current != nullptr) {
 			output << ' ' << current->value;
@@ -129,8 +129,8 @@ string setToString(const Set* set, const string& name) {
 void printSet(const Set* set) {
 	bool first = true;
 
-	for (size_t i = 0; i < set->capacity; ++i) {
-		Node* current = set->buckets[i];
+	for (size_t i = 0; i < set->table.capacity; ++i) {
+		Node* current = set->table.buckets[i];
 
 		while (current != nullptr) {
 			if (!first) cout << ' ';
@@ -197,9 +197,9 @@ int main(int argc, char* argv[]) {
 	bool changed = false;
 
 	if (query.command == "SETADD") {
-		size_t oldSize = currentSet.size;
+		int oldSize = currentSet.table.size;
 		add(&currentSet, query.value);
-		changed = currentSet.size != oldSize;
+		changed = currentSet.table.size != oldSize;
 	} else if (query.command == "SETDEL") {
 		changed = remove(&currentSet, query.value);
 	} else if (query.command == "SET_AT") {

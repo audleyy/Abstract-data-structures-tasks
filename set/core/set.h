@@ -1,28 +1,17 @@
 #ifndef SET_H
 #define SET_H
 
-#include <iostream>
-#include <string>
-
-using namespace std;
-
-struct Node {
-	string value;
-	Node* next;
-};
+#include "../../hash-table/core/chaining.h"
 
 struct Set {
-	Node** buckets;
-	size_t capacity;
-	int size;
+	Chaining table;
 };
 
 void init(Set* set);
-size_t hashFunction(const string &value, size_t capacity);
-bool contains(const Set* set, const string &val);
+bool contains(const Set* set, const string& value);
 void rehash(Set* set);
 void add(Set* set, const string& value);
-bool remove(Set* set, const string& val);
+bool remove(Set* set, const string& value);
 void clear(Set* set);
 
 #endif

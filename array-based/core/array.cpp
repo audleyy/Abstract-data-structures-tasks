@@ -5,6 +5,12 @@ void init(Array& arr) {
 	arr.size = 0;
 }
 
+void initFilledArray(Array& arr, int size, const string& value) {
+	arr.size = size;
+	arr.data = new string[size];
+	for (int i = 0; i < size; ++i) arr.data[i] = value;
+}
+
 void pushIndex(Array& arr, int index, const string& value) {
 	if (index < 0 || index >= arr.size) return;
 
@@ -39,7 +45,7 @@ void pushBack(Array& arr, const string& value) {
 	arr.size++;
 }
 
-string get(Array& arr, int index) {
+string get(const Array& arr, int index) {
 	if (index < 0 || index >= arr.size) return string();
 	return arr.data[index];
 }

@@ -1,4 +1,6 @@
-#include "core/set.h"
+#include "../set/core/set.h"
+
+#include <iostream>
 
 #include <climits>
 
@@ -6,9 +8,9 @@ void copySet(const Set* source, Set* target) {
 	clear(target);
 	init(target);
 
-	int capacity = source->capacity;
+	int capacity = source->table.capacity;
 	for (int i = 0; i < capacity; ++i) {
-		Node* current = source->buckets[i];
+		Node* current = source->table.buckets[i];
 
 		while (current != nullptr) {
 			add(target, current->value);
@@ -23,13 +25,13 @@ void findPartition(Set* remaining, Set* current, Set* best, int sum, int half, i
 		bestSum = sum;
 	}
 
-	if (bestSum == half || remaining->size == 0) return;
+	if (bestSum == half || remaining->table.size == 0) return;
 
 	string value;
-	int capacity = remaining->capacity;
+	int capacity = remaining->table.capacity;
 	for (int i = 0; i < capacity; ++i) {
-		if (remaining->buckets[i] != nullptr) {
-			value = remaining->buckets[i]->value;
+		if (remaining->table.buckets[i] != nullptr) {
+			value = remaining->table.buckets[i]->value;
 			break;
 		}
 	}
@@ -52,10 +54,10 @@ void findPartition(Set* remaining, Set* current, Set* best, int sum, int half, i
 
 int partitionSet(const Set* source, Set* first, Set* second) {
 	int total = 0;
-	int capacity = source->capacity;
+	int capacity = source->table.capacity;
 
 	for (int i = 0; i < capacity; ++i) {
-		Node* node = source->buckets[i];
+		Node* node = source->table.buckets[i];
 
 		while (node != nullptr) {
 			int value = stoi(node->value);
@@ -79,7 +81,7 @@ int partitionSet(const Set* source, Set* first, Set* second) {
 	copySet(&best, first);
 
 	for (int i = 0; i < capacity; ++i) {
-		Node* node = source->buckets[i];
+		Node* node = source->table.buckets[i];
 
 		while (node != nullptr) {
 			if (!contains(first, node->value)) add(second, node->value);
@@ -110,8 +112,8 @@ string setToString(const Set* set) {
 	string result = "{";
 	bool first = true;
 
-	for (int i = 0; i < set->capacity; ++i) {
-		Node* current = set->buckets[i];
+	for (size_t i = 0; i < set->table.capacity; ++i) {
+		Node* current = set->table.buckets[i];
 
 		while (current != nullptr) {
 			if (!first) result += ", ";

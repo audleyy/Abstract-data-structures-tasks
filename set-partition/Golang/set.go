@@ -1,5 +1,7 @@
 package main
 
+import "lab2/hash-functions/Golang"
+
 type Node struct {
 	value string
 	next  *Node
@@ -17,18 +19,8 @@ func initSet(set *Set) {
 	set.buckets = make([]*Node, set.capacity)
 }
 
-func hashFunction(value string, capacity int) int {
-	var hash uint
-
-	for i := 0; i < len(value); i++ {
-		hash = hash*31 + uint(value[i])
-	}
-
-	return int(hash % uint(capacity))
-}
-
 func contains(set *Set, value string) bool {
-	index := hashFunction(value, set.capacity)
+	index := hashfunctions.HashFunction(value, set.capacity)
 	current := set.buckets[index]
 
 	for current != nil {
@@ -52,7 +44,7 @@ func rehash(set *Set) {
 		for current != nil {
 			next := current.next
 
-			newIndex := hashFunction(current.value, newCapacity)
+			newIndex := hashfunctions.HashFunction(current.value, newCapacity)
 
 			current.next = newBuckets[newIndex]
 			newBuckets[newIndex] = current
@@ -74,7 +66,7 @@ func add(set *Set, value string) {
 		rehash(set)
 	}
 
-	index := hashFunction(value, set.capacity)
+	index := hashfunctions.HashFunction(value, set.capacity)
 
 	newNode := &Node{
 		value: value,
@@ -86,7 +78,7 @@ func add(set *Set, value string) {
 }
 
 func remove(set *Set, value string) bool {
-	index := hashFunction(value, set.capacity)
+	index := hashfunctions.HashFunction(value, set.capacity)
 	current := set.buckets[index]
 	var previous *Node
 

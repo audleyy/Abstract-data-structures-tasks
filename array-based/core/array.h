@@ -12,9 +12,10 @@ struct Array {
 };
 
 void init(Array& arr);
+void initFilledArray(Array& arr, int size, const string& value);
 void pushIndex(Array& arr, int index, const string& value);
 void pushBack(Array& arr, const string& value);
-string get(Array& arr, int index);
+string get(const Array& arr, int index);
 void remove(Array& arr, int index);
 void replace(Array& arr, int index, const string& value);
 int length(Array& arr);
