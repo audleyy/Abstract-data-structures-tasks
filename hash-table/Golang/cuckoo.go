@@ -8,10 +8,11 @@ type CuckooCell struct {
 }
 
 type Cuckoo struct {
+	Filter   BloomFilter
 	first    []CuckooCell
 	second   []CuckooCell
-	capacity int
-	size     int
+	Capacity int
+	Size     int
 	seed     int
 }
 
@@ -19,8 +20,9 @@ func initCuckooCapacity(table *Cuckoo, capacity int, seed int) {
 	*table = Cuckoo{}
 	table.first = make([]CuckooCell, capacity)
 	table.second = make([]CuckooCell, capacity)
-	table.capacity = capacity
+	table.Capacity = capacity
 	table.seed = seed
+	initBloomFilter(&table.Filter, capacity*16)
 }
 
 func InitCuckoo(table *Cuckoo) {
@@ -28,12 +30,15 @@ func InitCuckoo(table *Cuckoo) {
 }
 
 func ContainsCuckoo(table *Cuckoo, key string) bool {
-	first := table.first[hashfunctions.CuckooIndex(key, table.capacity, table.seed)]
+	if !MightContainBloomFilter(&table.Filter, key) {
+		return false
+	}
+	first := table.first[hashfunctions.CuckooIndex(key, table.Capacity, table.seed)]
 	if first.occupied && first.key == key {
 		return true
 	}
 
-	second := table.second[hashfunctions.CuckooIndex(key, table.capacity, table.seed+1)]
+	second := table.second[hashfunctions.CuckooIndex(key, table.Capacity, table.seed+1)]
 	return second.occupied && second.key == key
 }
 
@@ -46,7 +51,7 @@ func placeKey(table *Cuckoo, key *string) bool {
 			cells = table.second
 			seed++
 		}
-		cell := &cells[hashfunctions.CuckooIndex(*key, table.capacity, seed)]
+		cell := &cells[hashfunctions.CuckooIndex(*key, table.Capacity, seed)]
 		if !cell.occupied {
 			cell.key = *key
 			cell.occupied = true
@@ -60,7 +65,7 @@ func placeKey(table *Cuckoo, key *string) bool {
 }
 
 func copyKeys(source *Cuckoo, target *Cuckoo) bool {
-	for i := 0; i < source.capacity; i++ {
+	for i := 0; i < source.Capacity; i++ {
 		if source.first[i].occupied {
 			key := source.first[i].key
 			if !placeKey(target, &key) {
@@ -87,7 +92,15 @@ func rebuild(table *Cuckoo, capacity int, extra string) {
 		key := extra
 		placed := copyKeys(table, &next) && placeKey(&next, &key)
 		if placed {
-			next.size = table.size + 1
+			next.Size = table.Size + 1
+			for i := 0; i < next.Capacity; i++ {
+				if next.first[i].occupied {
+					addToBloomFilter(&next.Filter, next.first[i].key)
+				}
+				if next.second[i].occupied {
+					addToBloomFilter(&next.Filter, next.second[i].key)
+				}
+			}
 			*table = next
 			return
 		}
@@ -104,30 +117,34 @@ func AddCuckoo(table *Cuckoo, key string) {
 	if ContainsCuckoo(table, key) {
 		return
 	}
-	if table.size+1 > table.capacity*4/5 {
-		rebuild(table, table.capacity*2, key)
+	if table.Size+1 > table.Capacity*4/5 {
+		rebuild(table, table.Capacity*2, key)
 		return
 	}
 
 	pending := key
 	if placeKey(table, &pending) {
-		table.size++
+		table.Size++
+		addToBloomFilter(&table.Filter, key)
 	} else {
-		rebuild(table, table.capacity, pending)
+		rebuild(table, table.Capacity, pending)
 	}
 }
 
 func RemoveCuckoo(table *Cuckoo, key string) bool {
-	cell := &table.first[hashfunctions.CuckooIndex(key, table.capacity, table.seed)]
+	if !MightContainBloomFilter(&table.Filter, key) {
+		return false
+	}
+	cell := &table.first[hashfunctions.CuckooIndex(key, table.Capacity, table.seed)]
 	if !cell.occupied || cell.key != key {
-		cell = &table.second[hashfunctions.CuckooIndex(key, table.capacity, table.seed+1)]
+		cell = &table.second[hashfunctions.CuckooIndex(key, table.Capacity, table.seed+1)]
 		if !cell.occupied || cell.key != key {
 			return false
 		}
 	}
 
 	*cell = CuckooCell{}
-	table.size--
+	table.Size--
 	return true
 }
 

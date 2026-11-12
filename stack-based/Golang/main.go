@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
-func processAsteroid(survivors *Stack, size int, direction string) error {
-	if direction == "L" {
+func processAsteroid(survivors *Stack, size int, direction byte) error {
+	if direction == 'L' {
 		size = -size
 	}
 
@@ -35,30 +36,41 @@ func processAsteroid(survivors *Stack, size int, direction string) error {
 
 func readAsteroids(survivors *Stack) error {
 	input := bufio.NewReader(os.Stdin)
-
-	var count int
-
-	if _, err := fmt.Fscan(input, &count); err != nil {
+	var token string
+	if _, err := fmt.Fscan(input, &token); err != nil {
 		return err
 	}
-
-	if count < 0 {
+	count, err := strconv.ParseInt(token, 10, 32)
+	if err != nil || count < 0 {
 		return os.ErrInvalid
 	}
 
-	for i := 0; i < count; i++ {
-		var size int
-		var direction string
+	var part strings.Reader
+	for i := int64(0); i < count; i++ {
+		if part.Len() == 0 {
+			if _, err := fmt.Fscan(input, &token); err != nil {
+				return err
+			}
+			part.Reset(token)
+		}
 
-		if _, err := fmt.Fscan(input, &size, &direction); err != nil {
+		var size int32
+		if _, err := fmt.Fscanf(&part, "%d", &size); err != nil {
 			return err
 		}
 
-		if size <= 0 || (direction != "L" && direction != "R") {
+		if part.Len() == 0 {
+			if _, err := fmt.Fscan(input, &token); err != nil {
+				return err
+			}
+			part.Reset(token)
+		}
+		direction, err := part.ReadByte()
+		if err != nil || size <= 0 || (direction != 'L' && direction != 'R') {
 			return os.ErrInvalid
 		}
 
-		if err := processAsteroid(survivors, size, direction); err != nil {
+		if err := processAsteroid(survivors, int(size), direction); err != nil {
 			return err
 		}
 	}

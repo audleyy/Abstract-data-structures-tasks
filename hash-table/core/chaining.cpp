@@ -51,7 +51,7 @@ void rehashChaining(Chaining* table) {
 void addChaining(Chaining* table, const string& value) {
 	if (containsChaining(table, value)) return;
 
-	if (static_cast<size_t>(table->size + 1) > table->capacity * 3 / 4) rehashChaining(table);
+	if (table->size + 1 > table->capacity * 3 / 4) rehashChaining(table);
 
 	size_t index = hashFunction(value, table->capacity);
 	Node* newNode = new Node{value, nullptr};
@@ -64,7 +64,6 @@ void addChaining(Chaining* table, const string& value) {
 
 bool removeChaining(Chaining* table, const string& val) {
 	if (!mightContainBloomFilter(&table->filter, val)) return false;
-	// Биты удаляемого ключа могут использоваться другими ключами.
 	size_t index = hashFunction(val, table->capacity);
 
 	Node* current = table->buckets[index];

@@ -3,58 +3,66 @@ package hashtable
 import "lab2/hash-functions/Golang"
 
 type Node struct {
-	value string
-	next  *Node
+	Value string
+	Next  *Node
 }
 
 type Set struct {
-	buckets  []*Node
-	capacity int
-	size     int
+	Filter   BloomFilter
+	Buckets  []*Node
+	Capacity int
+	Size     int
 }
 
 func InitSet(set *Set) {
-	set.capacity = 4
-	set.size = 0
-	set.buckets = make([]*Node, set.capacity)
+	set.Capacity = 4
+	set.Size = 0
+	set.Buckets = make([]*Node, set.Capacity)
+	initBloomFilter(&set.Filter, set.Capacity*16)
 }
 
 func Contains(set *Set, value string) bool {
-	index := hashfunctions.HashFunction(value, set.capacity)
-	current := set.buckets[index]
+	if !MightContainBloomFilter(&set.Filter, value) {
+		return false
+	}
+	index := hashfunctions.HashFunction(value, set.Capacity)
+	current := set.Buckets[index]
 
 	for current != nil {
-		if current.value == value {
+		if current.Value == value {
 			return true
 		}
 
-		current = current.next
+		current = current.Next
 	}
 
 	return false
 }
 
 func rehash(set *Set) {
-	newCapacity := set.capacity * 2
+	newCapacity := set.Capacity * 2
 	newBuckets := make([]*Node, newCapacity)
+	clearBloomFilter(&set.Filter)
+	initBloomFilter(&set.Filter, newCapacity*16)
 
-	for i := 0; i < set.capacity; i++ {
-		current := set.buckets[i]
+	for i := 0; i < set.Capacity; i++ {
+		current := set.Buckets[i]
 
 		for current != nil {
-			next := current.next
+			next := current.Next
 
-			newIndex := hashfunctions.HashFunction(current.value, newCapacity)
+			newIndex := hashfunctions.HashFunction(current.Value, newCapacity)
+			addToBloomFilter(&set.Filter, current.Value)
 
-			current.next = newBuckets[newIndex]
+			current.Next = newBuckets[newIndex]
 			newBuckets[newIndex] = current
 
 			current = next
 		}
 	}
 
-	set.buckets = newBuckets
-	set.capacity = newCapacity
+	set.Buckets = newBuckets
+	set.Capacity = newCapacity
 }
 
 func Add(set *Set, value string) {
@@ -62,47 +70,52 @@ func Add(set *Set, value string) {
 		return
 	}
 
-	if set.size+1 > set.capacity*3/4 {
+	if set.Size+1 > set.Capacity*3/4 {
 		rehash(set)
 	}
 
-	index := hashfunctions.HashFunction(value, set.capacity)
+	index := hashfunctions.HashFunction(value, set.Capacity)
 
 	newNode := &Node{
-		value: value,
-		next:  set.buckets[index],
+		Value: value,
+		Next:  set.Buckets[index],
 	}
 
-	set.buckets[index] = newNode
-	set.size++
+	set.Buckets[index] = newNode
+	set.Size++
+	addToBloomFilter(&set.Filter, value)
 }
 
 func Remove(set *Set, value string) bool {
-	index := hashfunctions.HashFunction(value, set.capacity)
-	current := set.buckets[index]
+	if !MightContainBloomFilter(&set.Filter, value) {
+		return false
+	}
+	index := hashfunctions.HashFunction(value, set.Capacity)
+	current := set.Buckets[index]
 	var previous *Node
 
 	for current != nil {
-		if current.value == value {
+		if current.Value == value {
 			if previous == nil {
-				set.buckets[index] = current.next
+				set.Buckets[index] = current.Next
 			} else {
-				previous.next = current.next
+				previous.Next = current.Next
 			}
 
-			set.size--
+			set.Size--
 			return true
 		}
 
 		previous = current
-		current = current.next
+		current = current.Next
 	}
 
 	return false
 }
 
 func Clear(set *Set) {
-	set.buckets = nil
-	set.capacity = 0
-	set.size = 0
+	clearBloomFilter(&set.Filter)
+	set.Buckets = nil
+	set.Capacity = 0
+	set.Size = 0
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"lab2/hash-table/Golang"
 )
 
 type Query struct {
@@ -29,9 +31,15 @@ func parseArguments(args []string) (string, string, error) {
 	return filename, queryText, nil
 }
 
+func splitFields(text string) []string {
+	return strings.FieldsFunc(text, func(symbol rune) bool {
+		return symbol == ' ' || (symbol >= '\t' && symbol <= '\r')
+	})
+}
+
 func parseQuery(text string) (Query, error) {
 	var query Query
-	fields := strings.Fields(text)
+	fields := splitFields(text)
 
 	if len(fields) < 2 {
 		return query, os.ErrInvalid
@@ -83,7 +91,7 @@ func findSet(lines []string, name string) (int, error) {
 	position := -1
 
 	for i, line := range lines {
-		fields := strings.Fields(line)
+		fields := splitFields(line)
 
 		if len(fields) < 2 || fields[1] != name {
 			continue
@@ -99,30 +107,30 @@ func findSet(lines []string, name string) (int, error) {
 	return position, nil
 }
 
-func loadSet(line string, set *Set) {
-	fields := strings.Fields(line)
+func loadSet(line string, set *hashtable.Set) {
+	fields := splitFields(line)
 
 	for _, value := range fields[2:] {
-		add(set, value)
+		hashtable.Add(set, value)
 	}
 }
 
-func setValues(set *Set) []string {
+func setValues(set *hashtable.Set) []string {
 	var values []string
 
-	for i := 0; i < set.capacity; i++ {
-		current := set.buckets[i]
+	for i := 0; i < set.Capacity; i++ {
+		current := set.Buckets[i]
 
 		for current != nil {
-			values = append(values, current.value)
-			current = current.next
+			values = append(values, current.Value)
+			current = current.Next
 		}
 	}
 
 	return values
 }
 
-func setToString(set *Set, name string) string {
+func setToString(set *hashtable.Set, name string) string {
 	result := "E " + name
 	values := setValues(set)
 
@@ -133,22 +141,22 @@ func setToString(set *Set, name string) string {
 	return result
 }
 
-func printSet(set *Set) {
+func printSet(set *hashtable.Set) {
 	fmt.Println(strings.Join(setValues(set), " "))
 }
 
-func executeSet(query Query, set *Set) (bool, error) {
+func executeSet(query Query, set *hashtable.Set) (bool, error) {
 	switch query.command {
 	case "SETADD":
-		oldSize := set.size
-		add(set, query.value)
-		return set.size != oldSize, nil
+		oldSize := set.Size
+		hashtable.Add(set, query.value)
+		return set.Size != oldSize, nil
 
 	case "SETDEL":
-		return remove(set, query.value), nil
+		return hashtable.Remove(set, query.value), nil
 
 	case "SET_AT":
-		if contains(set, query.value) {
+		if hashtable.Contains(set, query.value) {
 			fmt.Println("TRUE")
 		} else {
 			fmt.Println("FALSE")
@@ -193,9 +201,9 @@ func run() error {
 		return os.ErrNotExist
 	}
 
-	var set Set
-	initSet(&set)
-	defer clear(&set)
+	var set hashtable.Set
+	hashtable.InitSet(&set)
+	defer hashtable.Clear(&set)
 
 	if position != -1 {
 		loadSet(lines[position], &set)

@@ -2,148 +2,149 @@ package main
 
 import (
 	"bufio"
-	"os"
 	"fmt"
-	"math"
+	"os"
 	"strconv"
+
+	"lab2/hash-table/Golang"
 )
 
-func copySet(source *Set, target *Set) {
-	clear(target)
-	initSet(target)
+func copySet(source *hashtable.Set, target *hashtable.Set) {
+	hashtable.Clear(target)
+	hashtable.InitSet(target)
 
-	capacity := source.capacity
+	capacity := source.Capacity
 	for i := 0; i < capacity; i++ {
-		current := source.buckets[i]
+		current := source.Buckets[i]
 
 		for current != nil {
-			add(target, current.value)
-			current = current.next
+			hashtable.Add(target, current.Value)
+			current = current.Next
 		}
 	}
 }
 
-func findPartition(remaining *Set, current *Set, best *Set, sum int, half int, bestSum *int) {
+func findPartition(remaining *hashtable.Set, current *hashtable.Set, best *hashtable.Set, sum int32, half int32, bestSum *int32) {
 	if sum > *bestSum {
 		copySet(current, best)
 		*bestSum = sum
 	}
 
-	if *bestSum == half || remaining.size == 0 {
+	if *bestSum == half || remaining.Size == 0 {
 		return
 	}
 
 	var value string
-	capacity := remaining.capacity
+	capacity := remaining.Capacity
 	for i := 0; i < capacity; i++ {
-		if remaining.buckets[i] != nil {
-			value = remaining.buckets[i].value
+		if remaining.Buckets[i] != nil {
+			value = remaining.Buckets[i].Value
 			break
 		}
 	}
 
 	number, _ := strconv.Atoi(value)
-	remove(remaining, value)
+	hashtable.Remove(remaining, value)
 
-	if number <= half-sum {
-		add(current, value)
-		findPartition(remaining, current, best, sum+number, half, bestSum)
-		remove(current, value)
+	if int32(number) <= half-sum {
+		hashtable.Add(current, value)
+		findPartition(remaining, current, best, sum+int32(number), half, bestSum)
+		hashtable.Remove(current, value)
 	}
 
 	if *bestSum != half {
 		findPartition(remaining, current, best, sum, half, bestSum)
 	}
 
-	add(remaining, value)
+	hashtable.Add(remaining, value)
 }
 
-func partitionSet(source *Set, first *Set, second *Set) int {
-	total := 0
-	capacity := source.capacity
+func partitionSet(source *hashtable.Set, first *hashtable.Set, second *hashtable.Set) int32 {
+	var total int32
+	capacity := source.Capacity
 
 	for i := 0; i < capacity; i++ {
-		node := source.buckets[i]
+		node := source.Buckets[i]
 
 		for node != nil {
-			value, err := strconv.Atoi(node.value)
-			if err != nil || value <= 0 || value > math.MaxInt-total {
+			value, err := strconv.Atoi(node.Value)
+			if err != nil || value <= 0 {
 				return -1
 			}
 
-			total += value
-			node = node.next
+			total += int32(value)
+			node = node.Next
 		}
 	}
 
-	var remaining Set
-	var current Set
-	var best Set
-	bestSum := 0
+	var remaining hashtable.Set
+	var current hashtable.Set
+	var best hashtable.Set
+	var bestSum int32
 
-	initSet(&remaining)
-	initSet(&current)
-	initSet(&best)
+	hashtable.InitSet(&remaining)
+	hashtable.InitSet(&current)
+	hashtable.InitSet(&best)
 	copySet(source, &remaining)
 	findPartition(&remaining, &current, &best, 0, total/2, &bestSum)
 	copySet(&best, first)
 
 	for i := 0; i < capacity; i++ {
-		node := source.buckets[i]
+		node := source.Buckets[i]
 
 		for node != nil {
-			if !contains(first, node.value) {
-				add(second, node.value)
+			if !hashtable.Contains(first, node.Value) {
+				hashtable.Add(second, node.Value)
 			}
-			node = node.next
+			node = node.Next
 		}
 	}
 
-	clear(&remaining)
-	clear(&current)
-	clear(&best)
+	hashtable.Clear(&remaining)
+	hashtable.Clear(&current)
+	hashtable.Clear(&best)
 	return total - 2*bestSum
 }
 
-func readSet(set *Set) bool {
+func readSet(set *hashtable.Set) bool {
 	input := bufio.NewReader(os.Stdin)
 	var token string
 	if _, err := fmt.Fscan(input, &token); err != nil {
 		return false
 	}
-	count, err := strconv.Atoi(token)
+	count, err := strconv.ParseInt(token, 10, 32)
 	if err != nil || count < 0 {
 		return false
 	}
 
-	for i := 0; i < count; i++ {
+	for i := int64(0); i < count; i++ {
 		if _, err := fmt.Fscan(input, &token); err != nil {
 			return false
 		}
-		value, err := strconv.Atoi(token)
+		value, err := strconv.ParseInt(token, 10, 32)
 		if err != nil || value <= 0 {
 			return false
 		}
-		add(set, strconv.Itoa(value))
+		hashtable.Add(set, strconv.Itoa(int(value)))
 	}
 
 	return true
 }
 
-func setToString(set *Set) string {
+func setToString(set *hashtable.Set) string {
 	result := "{"
 	first := true
 
-	for i := 0; i < set.capacity; i++ {
-		current := set.buckets[i]
+	for i := 0; i < set.Capacity; i++ {
+		current := set.Buckets[i]
 
 		for current != nil {
 			if !first {
 				result += ", "
 			}
-			result += current.value
+			result += current.Value
 			first = false
-			current = current.next
+			current = current.Next
 		}
 	}
 
@@ -151,14 +152,14 @@ func setToString(set *Set) string {
 }
 
 func main() {
-	var source Set
-	var first Set
-	var second Set
+	var source hashtable.Set
+	var first hashtable.Set
+	var second hashtable.Set
 	result := 0
 
-	initSet(&source)
-	initSet(&first)
-	initSet(&second)
+	hashtable.InitSet(&source)
+	hashtable.InitSet(&first)
+	hashtable.InitSet(&second)
 
 	if !readSet(&source) {
 		result = 1
@@ -177,9 +178,9 @@ func main() {
 		}
 	}
 
-	clear(&source)
-	clear(&first)
-	clear(&second)
+	hashtable.Clear(&source)
+	hashtable.Clear(&first)
+	hashtable.Clear(&second)
 
 	os.Exit(result)
 }

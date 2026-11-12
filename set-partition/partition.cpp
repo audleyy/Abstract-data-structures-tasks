@@ -61,7 +61,7 @@ int partitionSet(const Set* source, Set* first, Set* second) {
 
 		while (node != nullptr) {
 			int value = stoi(node->value);
-			if (value <= 0 || value > INT_MAX - total) return -1;
+			if (value <= 0) return -1;
 
 			total += value;
 			node = node->next;
