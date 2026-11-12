@@ -18,7 +18,7 @@ func copySet(source *hashtable.Set, target *hashtable.Set) {
 		current := source.Buckets[i]
 
 		for current != nil {
-			hashtable.Add(target, current.Value)
+			hashtable.Add(target, current.Key)
 			current = current.Next
 		}
 	}
@@ -38,7 +38,7 @@ func findPartition(remaining *hashtable.Set, current *hashtable.Set, best *hasht
 	capacity := remaining.Capacity
 	for i := 0; i < capacity; i++ {
 		if remaining.Buckets[i] != nil {
-			value = remaining.Buckets[i].Value
+			value = remaining.Buckets[i].Key
 			break
 		}
 	}
@@ -67,7 +67,7 @@ func partitionSet(source *hashtable.Set, first *hashtable.Set, second *hashtable
 		node := source.Buckets[i]
 
 		for node != nil {
-			value, err := strconv.Atoi(node.Value)
+			value, err := strconv.Atoi(node.Key)
 			if err != nil || value <= 0 {
 				return -1
 			}
@@ -93,8 +93,8 @@ func partitionSet(source *hashtable.Set, first *hashtable.Set, second *hashtable
 		node := source.Buckets[i]
 
 		for node != nil {
-			if !hashtable.Contains(first, node.Value) {
-				hashtable.Add(second, node.Value)
+			if !hashtable.Contains(first, node.Key) {
+				hashtable.Add(second, node.Key)
 			}
 			node = node.Next
 		}
@@ -142,7 +142,7 @@ func setToString(set *hashtable.Set) string {
 			if !first {
 				result += ", "
 			}
-			result += current.Value
+			result += current.Key
 			first = false
 			current = current.Next
 		}

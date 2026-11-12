@@ -8,17 +8,26 @@ void initChaining(Chaining* table) {
 	initBloomFilter(&table->filter, table->capacity * 16);
 }
 
-bool containsChaining(const Chaining* table, const string& val) {
-	if (!mightContainBloomFilter(&table->filter, val)) return false;
-	size_t index = hashFunction(val, table->capacity);
+Node* findNode(const Chaining* table, const string& key) {
+	if (!mightContainBloomFilter(&table->filter, key)) return nullptr;
+	size_t index = hashFunction(key, table->capacity);
 	Node* current = table->buckets[index];
 
 	while (current != nullptr) {
-		if (current->value == val) return true;
+		if (current->data.first == key) return current;
 		current = current->next;
 	}
 
-	return false;
+	return nullptr;
+}
+
+bool containsChaining(const Chaining* table, const string& key) {
+	return findNode(table, key) != nullptr;
+}
+
+const string* getChaining(const Chaining* table, const string& key) {
+	const Node* node = findNode(table, key);
+	return node == nullptr ? nullptr : &node->data.second;
 }
 
 void rehashChaining(Chaining* table) {
@@ -33,8 +42,8 @@ void rehashChaining(Chaining* table) {
 		while (current != nullptr) {
 			Node* next = current->next;
 
-			size_t newIndex = hashFunction(current->value, newCapacity);
-			addToBloomFilter(&table->filter, current->value);
+			size_t newIndex = hashFunction(current->data.first, newCapacity);
+			addToBloomFilter(&table->filter, current->data.first);
 
 			current->next = newBuckets[newIndex];
 			newBuckets[newIndex] = current;
@@ -48,29 +57,37 @@ void rehashChaining(Chaining* table) {
 	table->capacity = newCapacity;
 }
 
-void addChaining(Chaining* table, const string& value) {
-	if (containsChaining(table, value)) return;
-
+void insertChaining(Chaining* table, const string& key, const string& value) {
 	if (table->size + 1 > table->capacity * 3 / 4) rehashChaining(table);
 
-	size_t index = hashFunction(value, table->capacity);
-	Node* newNode = new Node{value, nullptr};
-
-	newNode->next = table->buckets[index];
-	table->buckets[index] = newNode;
+	size_t index = hashFunction(key, table->capacity);
+	table->buckets[index] = new Node{{key, value}, table->buckets[index]};
 	table->size++;
-	addToBloomFilter(&table->filter, value);
+	addToBloomFilter(&table->filter, key);
 }
 
-bool removeChaining(Chaining* table, const string& val) {
-	if (!mightContainBloomFilter(&table->filter, val)) return false;
-	size_t index = hashFunction(val, table->capacity);
+void addChaining(Chaining* table, const string& key) {
+	if (!containsChaining(table, key)) insertChaining(table, key, "");
+}
+
+void putChaining(Chaining* table, const string& key, const string& value) {
+	Node* node = findNode(table, key);
+	if (node != nullptr) {
+		node->data.second = value;
+		return;
+	}
+	insertChaining(table, key, value);
+}
+
+bool removeChaining(Chaining* table, const string& key) {
+	if (!mightContainBloomFilter(&table->filter, key)) return false;
+	size_t index = hashFunction(key, table->capacity);
 
 	Node* current = table->buckets[index];
 	Node* previous = nullptr;
 
 	while (current != nullptr) {
-		if (current->value == val) {
+		if (current->data.first == key) {
 			Node* toDelete = current;
 
 			if (previous == nullptr) {

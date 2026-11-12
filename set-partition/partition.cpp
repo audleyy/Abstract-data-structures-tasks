@@ -13,7 +13,7 @@ void copySet(const Set* source, Set* target) {
 		Node* current = source->table.buckets[i];
 
 		while (current != nullptr) {
-			add(target, current->value);
+			add(target, current->data.first);
 			current = current->next;
 		}
 	}
@@ -31,7 +31,7 @@ void findPartition(Set* remaining, Set* current, Set* best, int sum, int half, i
 	int capacity = remaining->table.capacity;
 	for (int i = 0; i < capacity; ++i) {
 		if (remaining->table.buckets[i] != nullptr) {
-			value = remaining->table.buckets[i]->value;
+			value = remaining->table.buckets[i]->data.first;
 			break;
 		}
 	}
@@ -60,7 +60,7 @@ int partitionSet(const Set* source, Set* first, Set* second) {
 		Node* node = source->table.buckets[i];
 
 		while (node != nullptr) {
-			int value = stoi(node->value);
+			int value = stoi(node->data.first);
 			if (value <= 0) return -1;
 
 			total += value;
@@ -84,7 +84,7 @@ int partitionSet(const Set* source, Set* first, Set* second) {
 		Node* node = source->table.buckets[i];
 
 		while (node != nullptr) {
-			if (!contains(first, node->value)) add(second, node->value);
+			if (!contains(first, node->data.first)) add(second, node->data.first);
 			node = node->next;
 		}
 	}
@@ -117,7 +117,7 @@ string setToString(const Set* set) {
 
 		while (current != nullptr) {
 			if (!first) result += ", ";
-			result += current->value;
+			result += current->data.first;
 			first = false;
 			current = current->next;
 		}

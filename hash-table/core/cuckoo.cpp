@@ -1,5 +1,6 @@
 #include "cuckoo.h"
 #include "../../hash-functions/hash.h"
+#include <utility>
 
 void initCuckoo(Cuckoo* table, int capacity, int seed) {
 	table->first = new CuckooCell[capacity]{};
@@ -14,70 +15,78 @@ void initCuckoo(Cuckoo* table) {
 	initCuckoo(table, 2, 1);
 }
 
-bool containsCuckoo(const Cuckoo* table, const string& key) {
-	if (!mightContainBloomFilter(&table->filter, key)) return false;
-	const CuckooCell& first = table->first[firstCuckooHash(key, table->capacity, table->seed)];
-	if (first.occupied && first.key == key) return true;
+CuckooCell* findCell(const Cuckoo* table, const string& key) {
+	if (!mightContainBloomFilter(&table->filter, key)) return nullptr;
 
-	const CuckooCell& second = table->second[secondCuckooHash(key, table->capacity, table->seed)];
-	return second.occupied && second.key == key;
+	CuckooCell& first = table->first[firstCuckooHash(key, table->capacity, table->seed)];
+	if (first.occupied && first.data.first == key) return &first;
+
+	CuckooCell& second = table->second[secondCuckooHash(key, table->capacity, table->seed)];
+	if (second.occupied && second.data.first == key) return &second;
+
+	return nullptr;
 }
 
-bool placeKey(Cuckoo* table, string& key) {
+bool containsCuckoo(const Cuckoo* table, const string& key) {
+	return findCell(table, key) != nullptr;
+}
+
+const string* getCuckoo(const Cuckoo* table, const string& key) {
+	const CuckooCell* cell = findCell(table, key);
+	return cell == nullptr ? nullptr : &cell->data.second;
+}
+
+bool placeEntry(Cuckoo* table, CuckooCell& entry) {
 	bool first = true;
 	for (int step = 0; step < 32; ++step) {
 		CuckooCell* cells = table->first;
-		int index = firstCuckooHash(key, table->capacity, table->seed);
+		int index = firstCuckooHash(entry.data.first, table->capacity, table->seed);
+
 		if (!first) {
 			cells = table->second;
-			index = secondCuckooHash(key, table->capacity, table->seed);
+			index = secondCuckooHash(entry.data.first, table->capacity, table->seed);
 		}
-		CuckooCell& cell = cells[index];
 
-		if (!cell.occupied) {
-			cell.key = key;
-			cell.occupied = true;
+		CuckooCell& cell = cells[index];
+		swap(cell, entry);
+		if (!entry.occupied) {
 			return true;
 		}
-
-		string displaced = cell.key;
-		cell.key = key;
-		key = displaced;
 		first = !first;
 	}
 
 	return false;
 }
 
-bool copyKeys(const Cuckoo* source, Cuckoo* target) {
+bool copyEntries(const Cuckoo* source, Cuckoo* target) {
 	for (int i = 0; i < source->capacity; ++i) {
 		if (source->first[i].occupied) {
-			string key = source->first[i].key;
-			if (!placeKey(target, key)) return false;
+			CuckooCell entry = source->first[i];
+			if (!placeEntry(target, entry)) return false;
 		}
 		if (source->second[i].occupied) {
-			string key = source->second[i].key;
-			if (!placeKey(target, key)) return false;
+			CuckooCell entry = source->second[i];
+			if (!placeEntry(target, entry)) return false;
 		}
 	}
 	return true;
 }
 
-void rebuild(Cuckoo* table, int capacity, const string& extra) {
+void rebuild(Cuckoo* table, int capacity, const CuckooCell& extra) {
 	int seed = table->seed + 2;
 	int attempts = 0;
 
 	while (true) {
 		Cuckoo next;
 		initCuckoo(&next, capacity, seed);
-		string key = extra;
-		bool placed = copyKeys(table, &next) && placeKey(&next, key);
+		CuckooCell entry = extra;
+		bool placed = copyEntries(table, &next) && placeEntry(&next, entry);
 
 		if (placed) {
 			next.size = table->size + 1;
 			for (int i = 0; i < next.capacity; ++i) {
-				if (next.first[i].occupied) addToBloomFilter(&next.filter, next.first[i].key);
-				if (next.second[i].occupied) addToBloomFilter(&next.filter, next.second[i].key);
+				if (next.first[i].occupied) addToBloomFilter(&next.filter, next.first[i].data.first);
+				if (next.second[i].occupied) addToBloomFilter(&next.filter, next.second[i].data.first);
 			}
 			clearCuckoo(table);
 			*table = next;
@@ -94,32 +103,39 @@ void rebuild(Cuckoo* table, int capacity, const string& extra) {
 	}
 }
 
-void addCuckoo(Cuckoo* table, const string& key) {
-	if (containsCuckoo(table, key)) return;
+void insertCuckoo(Cuckoo* table, const string& key, const string& value) {
+	CuckooCell pending{{key, value}, true};
 	if (table->size + 1 > table->capacity * 4 / 5) {
-		rebuild(table, table->capacity * 2, key);
+		rebuild(table, table->capacity * 2, pending);
 		return;
 	}
 
-	string pending = key;
-	if (placeKey(table, pending)) {
+	addToBloomFilter(&table->filter, key);
+	if (placeEntry(table, pending)) {
 		++table->size;
-		addToBloomFilter(&table->filter, key);
 	} else {
 		rebuild(table, table->capacity, pending);
 	}
 }
 
-bool removeCuckoo(Cuckoo* table, const string& key) {
-	if (!mightContainBloomFilter(&table->filter, key)) return false;
-	CuckooCell* cell = &table->first[firstCuckooHash(key, table->capacity, table->seed)];
-	if (!cell->occupied || cell->key != key) {
-		cell = &table->second[secondCuckooHash(key, table->capacity, table->seed)];
-		if (!cell->occupied || cell->key != key) return false;
-	}
+void addCuckoo(Cuckoo* table, const string& key) {
+	if (!containsCuckoo(table, key)) insertCuckoo(table, key, "");
+}
 
-	cell->key = "";
-	cell->occupied = false;
+void putCuckoo(Cuckoo* table, const string& key, const string& value) {
+	CuckooCell* cell = findCell(table, key);
+	if (cell != nullptr) {
+		cell->data.second = value;
+		return;
+	}
+	insertCuckoo(table, key, value);
+}
+
+bool removeCuckoo(Cuckoo* table, const string& key) {
+	CuckooCell* cell = findCell(table, key);
+	if (cell == nullptr) return false;
+
+	*cell = CuckooCell{};
 	--table->size;
 	return true;
 }

@@ -122,7 +122,7 @@ func setValues(set *hashtable.Set) []string {
 		current := set.Buckets[i]
 
 		for current != nil {
-			values = append(values, current.Value)
+			values = append(values, current.Key)
 			current = current.Next
 		}
 	}

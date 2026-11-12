@@ -118,7 +118,7 @@ string setToString(const Set* set, const string& name) {
 		Node* current = set->table.buckets[i];
 
 		while (current != nullptr) {
-			output << ' ' << current->value;
+			output << ' ' << current->data.first;
 			current = current->next;
 		}
 	}
@@ -135,7 +135,7 @@ void printSet(const Set* set) {
 		while (current != nullptr) {
 			if (!first) cout << ' ';
 
-			cout << current->value;
+			cout << current->data.first;
 			first = false;
 			current = current->next;
 		}
